@@ -1,0 +1,59 @@
+# app.py
+import streamlit as st
+from openai import OpenAI
+import json
+
+# ---------------- CONFIG ----------------
+# Pega tu llave de OpenRouter aquí
+OPENROUTER_KEY = "TU_LLAVE_OPENROUTER"
+
+# Inicializa cliente apuntando a OpenRouter
+client = OpenAI(api_key=OPENROUTER_KEY, api_base="https://openrouter.ai/v1")
+
+# ---------------- INTERFAZ ----------------
+st.set_page_config(page_title="💬 Chat OpenRouter", page_icon="🤖")
+st.title("💬 Chat con OpenRouter")
+st.write("Escribe tu mensaje y el modelo responderá. Puedes resetear el chat o cambiar de modelo.")
+
+# ---------------- HISTORIAL ----------------
+if "historial" not in st.session_state:
+    st.session_state["historial"] = []
+
+# ---------------- OPCIONES ----------------
+modelo = st.selectbox("Selecciona el modelo:", ["gpt-4.1-mini", "gpt-3.5-turbo"])
+
+# Botón para resetear chat
+if st.button("Resetear chat"):
+    st.session_state["historial"] = []
+    st.experimental_rerun()
+
+# Entrada de usuario
+entrada = st.text_area("Tu mensaje:", height=100)
+
+if st.button("Enviar") and entrada.strip() != "":
+    # Guardar mensaje usuario
+    st.session_state["historial"].append({"role": "user", "content": entrada})
+    
+    # Llamada al modelo
+    respuesta = client.chat.completions.create(
+        model=modelo,
+        messages=st.session_state["historial"]
+    )
+    
+    # Guardar respuesta del modelo
+    contenido_respuesta = respuesta.choices[0].message["content"]
+    st.session_state["historial"].append({"role": "assistant", "content": contenido_respuesta})
+
+# ---------------- MOSTRAR HISTORIAL ----------------
+st.markdown("---")
+for mensaje in st.session_state["historial"]:
+    if mensaje["role"] == "user":
+        st.markdown(f"**Tú:** {mensaje['content']}")
+    else:
+        st.markdown(f"**Bot:** {mensaje['content']}")
+
+# ---------------- GUARDAR HISTORIAL ----------------
+if st.button("Guardar historial"):
+    with open("historial_chat.json", "w", encoding="utf-8") as f:
+        json.dump(st.session_state["historial"], f, ensure_ascii=False, indent=4)
+    st.success("Historial guardado en historial_chat.json")
